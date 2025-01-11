@@ -26,3 +26,13 @@ All notable changes to this project will be documented in this file.
 ### Version Summary
 This version provides the core functionality for data filtering and aggregation, allowing users to process financial transaction data effectively. The script supports robust error handling and customizable output paths.
 
+## [0.2] - Enhanced Filtering and Bug Fixes
+
+### Added
+- Support for filtering by both start date and start time.
+- Argument validation to ensure `start_date` and `start_time` must be provided together.
+
+### Fixed
+- Resolved an issue with invalid comparisons between `datetime64[ns]` and `date` types.
+- Improved error handling for missing or incompatible arguments.
+
