@@ -105,8 +105,13 @@ class TradingBacktester:
                 trade_type = trade['Type']
                 stop_loss_price = trade['Stop Loss']
 
-                if (trade_type == 'Buy' and current_price <= stop_loss_price) or \
-                   (trade_type == 'Sell' and current_price >= stop_loss_price):
+                if (trade_type == 'Buy' and current_price - trade['Entry Price'] > self.safety_distance):
+                    trade['Stop Loss'] = trade['Entry Price'] + 1  # 移動停損點至進場價上方確保保本
+                elif (trade_type == 'Sell' and trade['Entry Price'] - current_price > self.safety_distance):
+                    trade['Stop Loss'] = trade['Entry Price'] - 1  # 移動停損點至進場價下方確保保本
+
+                if (trade_type == 'Buy' and current_price <= trade['Stop Loss']) or \
+                   (trade_type == 'Sell' and current_price >= trade['Stop Loss']):
                     self.close_all_positions(index)
                     break
 
