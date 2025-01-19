@@ -3,22 +3,23 @@ import os
 
 class TradingBacktester:
     def __init__(self, file_path):
-        self.file_path = file_path
-        self.filtered_data = None
-        self.trades = []
-        self.H = None
-        self.L = None
-        self.balance = 400000  # 初始資金
-        self.entry_buffer = 10  # 進場價的緩衝點數
-        self.stop_loss = 30  # 停損點數
-        self.position_count = 0  # 當前持倉口數
-        self.max_positions = 4  # 最大持倉口數
-        self.last_entry_price = None  # 最後一筆進場價格
-        self.daily_profit_loss = 0  # 當日總損益
-        self.parent_trade_id = None  # 母單ID
-        self.parent_close_time = None  # 母單平倉時間
-        self.trade_id_counter = 0  # 交易ID計數器
-        self.safety_distance = 30  # 安全距離初始值
+        self.file_path = file_path  # Path to the input data file
+        self.filtered_data = None  # DataFrame to store loaded data
+        self.trades = []  # List to store executed trades
+        self.H = None  # High price reference point
+        self.L = None  # Low price reference point
+        self.balance = 400000  # Initial balance in trading account
+        self.entry_buffer = 10  # Entry price buffer in points
+        self.stop_loss = 30  # Stop-loss threshold in points
+        self.position_count = 0  # Current number of open positions
+        self.max_positions = 4  # Maximum allowable positions
+        self.parent_lot_size = 2  # Initial number of lots for parent trades
+        self.last_entry_price = None  # Price of the last executed trade
+        self.daily_profit_loss = 0  # Total profit/loss for the day
+        self.parent_trade_id = None  # ID of the parent trade
+        self.parent_close_time = None  # Close time of the parent trade
+        self.trade_id_counter = 0  # Counter for unique trade IDs
+        self.safety_distance = 30  # Minimum distance before moving stop-loss
 
     def load_data(self):
         try:
@@ -78,11 +79,11 @@ class TradingBacktester:
 
         if (trade_type == 'Buy' and actual_entry_price >= entry_price) or (trade_type == 'Sell' and actual_entry_price <= entry_price):
             self.trade_id_counter += 1
-            is_parent = self.parent_trade_id is None
+            is_parent = self.parent_trade_id is None  # Determine if this is a parent trade
             if is_parent:
                 self.parent_trade_id = self.trade_id_counter
 
-            self.position_count += 1
+            self.position_count += self.parent_lot_size if is_parent else 1
             self.last_entry_price = actual_entry_price
 
             self.trades.append({
