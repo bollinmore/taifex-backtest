@@ -6,6 +6,8 @@ import os
 class TaifexDownloader:
     def __init__(self, url):
         self.url = url
+        self.download_folder = "download"
+        os.makedirs(self.download_folder, exist_ok=True)
 
     def fetch_webpage(self):
         print(f"Fetching webpage content from {self.url}")
@@ -53,7 +55,7 @@ class TaifexDownloader:
             print(f"Error downloading ZIP file: {e}")
             return None
 
-        zip_filename = f"data_{target_date.replace('/', '-')}.zip"
+        zip_filename = os.path.join(self.download_folder, f"data_{target_date.replace('/', '-')}.zip")
         print(f"Saving ZIP file as {zip_filename}.")
         try:
             with open(zip_filename, 'wb') as file:
@@ -65,11 +67,12 @@ class TaifexDownloader:
             return None
 
     def extract_file(self, zip_filename, target_date):
-        print(f"Extracting ZIP file to folder data_{target_date.replace('/', '-')}")
+        extract_folder = os.path.join(self.download_folder, f"data_{target_date.replace('/', '-')}")
+        print(f"Extracting ZIP file to folder {extract_folder}")
         try:
             with zipfile.ZipFile(zip_filename, 'r') as zip_ref:
-                zip_ref.extractall(f"data_{target_date.replace('/', '-')}")
-            print(f"Files extracted to folder data_{target_date.replace('/', '-')}")
+                zip_ref.extractall(extract_folder)
+            print(f"Files extracted to folder {extract_folder}")
         except zipfile.BadZipFile as e:
             print(f"Error extracting ZIP file: {e}")
 
@@ -88,16 +91,18 @@ class TaifexDownloader:
 
             print(f"Row {row_index}: Found date {date_text}.")
 
-            if date_text == target_date and csv_link:
+            if target_date == "all" or date_text == target_date:
                 onclick_value = csv_link['onclick']
                 csv_url = onclick_value.split("'")[1]  # Extracting the URL from the onclick string
-                print(f"Match found for date {target_date}. Download link: {csv_url}")
-                zip_filename = self.download_file(csv_url, target_date)
+                print(f"Downloading link found for date {date_text}. Link: {csv_url}")
+                zip_filename = self.download_file(csv_url, date_text)
                 if zip_filename:
-                    self.extract_file(zip_filename, target_date)
-                return
+                    self.extract_file(zip_filename, date_text)
+                if target_date != "all":
+                    return
 
-        print(f"No data found for the specified date: {target_date}")
+        if target_date != "all":
+            print(f"No data found for the specified date: {target_date}")
 
     def download_csv(self, target_date):
         html_content = self.fetch_webpage()
@@ -113,7 +118,7 @@ class TaifexDownloader:
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python script.py <target_date>")
+        print("Usage: python script.py <target_date|'all'>")
     else:
         target_date = sys.argv[1]
         downloader = TaifexDownloader("https://www.taifex.com.tw/cht/3/dlFutPrevious30DaysSalesData")
