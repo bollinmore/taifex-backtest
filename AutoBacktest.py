@@ -25,7 +25,7 @@ def extract_date_from_filename(filename):
         print(f"無法從檔名提取日期：{filename}")
         return None
 
-def main(skip_download=False):
+def main(skip_download=False, skip_filter=False, skip_backtest=False):
     # 定義虛擬環境的 Python 路徑
     virtualenv_python = r".venv\Scripts\python.exe"  # 修改為虛擬環境的 Python 路徑
 
@@ -70,30 +70,32 @@ def main(skip_download=False):
                 output_file = os.path.join(dataset_dir, f"{date_str.replace('-', '')}.csv")
                 print(f"處理檔案：{file} -> Contract: {contract}, Output: {output_file}")
 
-                # Step 2: 執行 DataFilter.py 過濾資料
-                try:
-                    subprocess.run([
-                        virtualenv_python, 'DataFilter.py',
-                        '-f', csv_path,
-                        '-p', 'MTX',
-                        '-e', contract,
-                        '-d', date_str,
-                        '-s', '08:45:00',
-                        '-o', output_file
-                    ], check=True)
-                except FileNotFoundError:
-                    print("錯誤：無法找到 DataFilter.py 執行檔，請確認檔案是否存在。")
-                    return
-
-                # Step 3: 執行 TradingBacktester.py 進行回測
-                try:
-                    with open(backtest_results_file, "a") as results_file:
+                # Step 2: 執行 DataFilter.py 過濾資料（如果未跳過）
+                if not skip_filter:
+                    try:
                         subprocess.run([
-                            virtualenv_python, 'TradingBacktester.py', output_file
-                        ], check=True, stdout=results_file)
-                except FileNotFoundError:
-                    print("錯誤：無法找到 TradingBacktester.py 執行檔，請確認檔案是否存在。")
-                    return
+                            virtualenv_python, 'DataFilter.py',
+                            '-f', csv_path,
+                            '-p', 'MTX',
+                            '-e', contract,
+                            '-d', date_str,
+                            '-s', '08:45:00',
+                            '-o', output_file
+                        ], check=True)
+                    except FileNotFoundError:
+                        print("錯誤：無法找到 DataFilter.py 執行檔，請確認檔案是否存在。")
+                        return
+
+                # Step 3: 執行 TradingBacktester.py 進行回測（如果未跳過）
+                if not skip_backtest:
+                    try:
+                        with open(backtest_results_file, "a") as results_file:
+                            subprocess.run([
+                                virtualenv_python, 'TradingBacktester.py', output_file
+                            ], check=True, stdout=results_file)
+                    except FileNotFoundError:
+                        print("錯誤：無法找到 TradingBacktester.py 執行檔，請確認檔案是否存在。")
+                        return
 
     print(f"自動化流程完成，所有回測結果已保存至 {backtest_results_file}。")
 
@@ -104,6 +106,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip-download", action="store_true", help="跳過資料下載流程，只處理現有資料"
     )
+    parser.add_argument(
+        "--skip-filter", action="store_true", help="跳過資料過濾流程"
+    )
+    parser.add_argument(
+        "--skip-backtest", action="store_true", help="跳過回測流程"
+    )
     args = parser.parse_args()
 
-    main(skip_download=args.skip_download)
+    main(skip_download=args.skip_download, skip_filter=args.skip_filter, skip_backtest=args.skip_backtest)
