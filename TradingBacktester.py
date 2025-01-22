@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 class TradingBacktester:
-    def __init__(self, file_path, verbose=False):
+    def __init__(self, file_path=None, verbose=False):
         self.file_path = file_path  # Path to the input data file
         self.filtered_data = None  # DataFrame to store loaded data
         self.trades = []  # List to store executed trades
@@ -22,12 +22,12 @@ class TradingBacktester:
         self.safety_distance = 30  # Minimum distance before moving stop-loss
         self.verbose = verbose  # Control whether to print detailed output
 
-    def load_data(self):
+    def load_data(self, file_path):
         # Load data from the file, handle different encodings if necessary
         try:
-            self.filtered_data = pd.read_csv(self.file_path, encoding='utf-8')
+            self.filtered_data = pd.read_csv(file_path, encoding='utf-8')
         except UnicodeDecodeError:
-            self.filtered_data = pd.read_csv(self.file_path, encoding='big5')
+            self.filtered_data = pd.read_csv(file_path, encoding='big5')
         
         # Rename columns for consistency with the code
         column_mapping = {
@@ -172,41 +172,57 @@ class TradingBacktester:
         # Return the results of all trades as a DataFrame
         return pd.DataFrame(self.trades)
 
-def main(file_path, verbose=False):
+def process_single_file(file_path, verbose):
+    backtester = TradingBacktester(verbose=verbose)
+    backtester.load_data(file_path)
+    backtester.set_reference_points()
+
+    if verbose:
+        print(f"Processing file: {os.path.basename(file_path)}")
+        print(f"區間最高點 (H): {backtester.H}")
+        print(f"區間最低點 (L): {backtester.L}")
+        print(f"預計作多的成交價格: {backtester.H + backtester.entry_buffer}")
+        print(f"預計作空的成交價格: {backtester.L - backtester.entry_buffer}")
+
+    backtester.backtest()
+    trades_df = backtester.get_results()
+
+    print(f"Total Profit/Loss for {os.path.basename(file_path)}: {backtester.daily_profit_loss}")
+    return backtester.daily_profit_loss, trades_df
+
+def process_folder(folder_path, verbose):
+    all_results = {}
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.csv'):
+            file_path = os.path.join(folder_path, file_name)
+            daily_profit_loss, trades_df = process_single_file(file_path, verbose)
+            if not trades_df.empty:
+                all_results[file_name] = (daily_profit_loss, trades_df)
+
+    total_profit_loss = sum(profit_loss for profit_loss, _ in all_results.values())
+    print(f"\nTotal Profit/Loss for all files: {total_profit_loss}")
+    return all_results
+
+def main(path, is_folder=False, verbose=False):
     try:
-        # Initialize and execute the backtesting process
-        backtester = TradingBacktester(file_path, verbose=verbose)
-        backtester.load_data()
-        backtester.set_reference_points()
-
-        # Print detailed information only if verbose is enabled
-        if verbose:
-            print(f"區間最高點 (H): {backtester.H}")
-            print(f"區間最低點 (L): {backtester.L}")
-            print(f"預計作多的成交價格: {backtester.H + backtester.entry_buffer}")
-            print(f"預計作空的成交價格: {backtester.L - backtester.entry_buffer}")
-
-        backtester.backtest()
-        trades_df = backtester.get_results()
-
-        # Print trade details if verbose is enabled
-        if verbose:
-            print(trades_df)
-
-        # Always display the total profit/loss
-        print(f"Total Profit/Loss for the day: {backtester.daily_profit_loss}")
+        if is_folder:
+            process_folder(path, verbose)
+        else:
+            process_single_file(path, verbose)
     except Exception as e:
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Run the trading backtest.")
-    parser.add_argument("file_path", type=str, help="Path to the filtered.csv file.")
+    parser = argparse.ArgumentParser(description="Run the trading backtest on a file or all CSV files in a folder.")
+    parser.add_argument("path", type=str, help="Path to the file or folder.")
+    parser.add_argument("--folder", action="store_true", help="Specify if the path is a folder containing multiple CSV files.")
     parser.add_argument("--verbose", action="store_true", help="Enable detailed output.")
 
     try:
         args = parser.parse_args()
-        main(args.file_path, verbose=args.verbose)
+        main(args.path, is_folder=args.folder, verbose=args.verbose)
     except SystemExit as e:
-        print("Error: Please provide a valid file path.")
+        print("Error: Please provide a valid path.")
