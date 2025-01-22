@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 class TradingBacktester:
-    def __init__(self, file_path):
+    def __init__(self, file_path, verbose=False):
         self.file_path = file_path  # Path to the input data file
         self.filtered_data = None  # DataFrame to store loaded data
         self.trades = []  # List to store executed trades
@@ -20,6 +20,7 @@ class TradingBacktester:
         self.parent_close_time = None  # Close time of the parent trade
         self.trade_id_counter = 0  # Counter for unique trade IDs
         self.safety_distance = 30  # Minimum distance before moving stop-loss
+        self.verbose = verbose  # Control whether to print detailed output
 
     def load_data(self):
         # Load data from the file, handle different encodings if necessary
@@ -171,19 +172,28 @@ class TradingBacktester:
         # Return the results of all trades as a DataFrame
         return pd.DataFrame(self.trades)
 
-def main(file_path):
+def main(file_path, verbose=False):
     try:
         # Initialize and execute the backtesting process
-        backtester = TradingBacktester(file_path)
+        backtester = TradingBacktester(file_path, verbose=verbose)
         backtester.load_data()
         backtester.set_reference_points()
-        print(f"區間最高點 (H): {backtester.H}")
-        print(f"區間最低點 (L): {backtester.L}")
-        print(f"預計作多的成交價格: {backtester.H + backtester.entry_buffer}")
-        print(f"預計作空的成交價格: {backtester.L - backtester.entry_buffer}")
+
+        # Print detailed information only if verbose is enabled
+        if verbose:
+            print(f"區間最高點 (H): {backtester.H}")
+            print(f"區間最低點 (L): {backtester.L}")
+            print(f"預計作多的成交價格: {backtester.H + backtester.entry_buffer}")
+            print(f"預計作空的成交價格: {backtester.L - backtester.entry_buffer}")
+
         backtester.backtest()
         trades_df = backtester.get_results()
-        print(trades_df)
+
+        # Print trade details if verbose is enabled
+        if verbose:
+            print(trades_df)
+
+        # Always display the total profit/loss
         print(f"Total Profit/Loss for the day: {backtester.daily_profit_loss}")
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -193,9 +203,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run the trading backtest.")
     parser.add_argument("file_path", type=str, help="Path to the filtered.csv file.")
+    parser.add_argument("--verbose", action="store_true", help="Enable detailed output.")
 
     try:
         args = parser.parse_args()
-        main(args.file_path)
+        main(args.file_path, verbose=args.verbose)
     except SystemExit as e:
         print("Error: Please provide a valid file path.")
