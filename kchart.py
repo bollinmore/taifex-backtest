@@ -38,8 +38,10 @@ fig.update_layout(
     xaxis_title="Time",
     yaxis_title="Price",
     xaxis=dict(rangeslider=dict(visible=False)),
+    yaxis=dict(tickformat="d"),  # Ensure Y-axis values are displayed as integers
     hovermode="x unified",
-    shapes=[]  # Initialize with no shapes
+    shapes=[],  # Initialize with no shapes
+    height=800  # Increase the height of the canvas
 )
 
 # Initialize Dash app
@@ -78,9 +80,15 @@ def update_figure(clickData, clear_all_clicks, clear_last_clicks, current_fig):
         debug_message += "clickData content: {}\n".format(clickData)
         if clickData and 'points' in clickData and len(clickData['points']) > 0:
             point = clickData['points'][0]
+            debug_message += "Point keys: {}\n".format(list(point.keys()))
             if 'y' in point:
                 y_value = point['y']  # Use the exact cursor Y value
-                debug_message += "Y-Value from click: {}\n".format(y_value)
+            else:
+                y_value = point.get('close', None)  # Fallback to 'close' value if 'y' is not present
+                debug_message += "'y' not found, fallback to 'close': {}\n".format(y_value)
+
+            if y_value is not None:
+                debug_message += "Y-Value used for horizontal line: {}\n".format(y_value)
 
                 # Ensure x0 and x1 are properly set
                 x0 = current_fig['layout']['xaxis']['range'][0] if 'range' in current_fig['layout']['xaxis'] else ohlc_data['datetime'].iloc[0]
@@ -99,6 +107,8 @@ def update_figure(clickData, clear_all_clicks, clear_last_clicks, current_fig):
                 )
                 horizontal_lines.append(new_line)
                 debug_message += "Horizontal line added. Total lines: {}\n".format(len(horizontal_lines))
+            else:
+                debug_message += "No valid Y-Value found for horizontal line.\n"
 
     # Handle clearing all lines
     elif ctx.triggered[0]['prop_id'] == 'clear-all.n_clicks':
