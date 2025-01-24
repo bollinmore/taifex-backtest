@@ -10,7 +10,7 @@ class AutoTrader:
 
     def initialize_api(self):
         print("登入中...")
-        self.api = sj.Shioaji()
+        self.api = sj.Shioaji(simulation=self.args.sandbox)
         self.api.login(api_key=self.args.api_key, secret_key=self.args.api_secret)
         print("成功登入！")
         print("啟動電子應用憑證...")
@@ -69,6 +69,7 @@ def parse_args():
     parser.add_argument('--api_key', type=str, required=True, help="API Key")
     parser.add_argument('--api_secret', type=str, required=True, help="API Secret")
     parser.add_argument('--person_id', type=str, required=True, help="\u8eab\u4efd\u8b49\u5b57\u865f")
+        parser.add_argument('--sandbox', action='store_true', help="啟用沙盒模式進行測試")
     return parser.parse_args()
 
 def main():
