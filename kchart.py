@@ -22,6 +22,13 @@ ohlc_data = data.set_index('datetime').resample('min').agg({
 ohlc_data.columns = ['開盤價', '最高價', '最低價', '收盤價']
 ohlc_data.reset_index(inplace=True)
 
+# Calculate highest and lowest prices between 08:45 and 09:05
+start_time = pd.Timestamp(ohlc_data['datetime'].dt.date.min().strftime('%Y-%m-%d') + ' 08:45')
+end_time = pd.Timestamp(ohlc_data['datetime'].dt.date.min().strftime('%Y-%m-%d') + ' 09:05')
+time_range_data = ohlc_data[(ohlc_data['datetime'] >= start_time) & (ohlc_data['datetime'] <= end_time)]
+highest_price = time_range_data['最高價'].max()
+lowest_price = time_range_data['最低價'].min()
+
 # Create initial candlestick chart
 fig = go.Figure()
 fig.add_trace(go.Candlestick(
@@ -40,7 +47,26 @@ fig.update_layout(
     xaxis=dict(rangeslider=dict(visible=False)),
     yaxis=dict(tickformat="d"),  # Ensure Y-axis values are displayed as integers
     hovermode="x unified",
-    shapes=[],  # Initialize with no shapes
+    shapes=[
+        # Highlight highest price
+        dict(
+            type="line",
+            x0=start_time,
+            x1=end_time,
+            y0=highest_price,
+            y1=highest_price,
+            line=dict(color="red", width=2, dash="dot")
+        ),
+        # Highlight lowest price
+        dict(
+            type="line",
+            x0=start_time,
+            x1=end_time,
+            y0=lowest_price,
+            y1=lowest_price,
+            line=dict(color="green", width=2, dash="dot")
+        )
+    ],
     height=800  # Increase the height of the canvas
 )
 
