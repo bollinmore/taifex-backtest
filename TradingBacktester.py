@@ -196,6 +196,9 @@ def process_single_file(file_path, verbose):
     backtester.backtest()
     trades_df = backtester.get_results()
 
+    if verbose:
+        print(trades_df)
+
     print(f"Total Profit/Loss for {os.path.basename(file_path)}: {backtester.daily_profit_loss}")
 
     # Save trades to a CSV file
