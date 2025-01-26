@@ -58,7 +58,7 @@ class TradingBacktester:
             current_price = self.filtered_data.loc[i, 'Close']
 
             # Close all positions if past the cutoff time
-            if current_time >= '13:40:00':
+            if current_time >= '13:40:00' and self.position_count > 0:
                 self.close_all_positions(i)
                 break
 
