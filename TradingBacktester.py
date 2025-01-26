@@ -172,6 +172,15 @@ class TradingBacktester:
         # Return the results of all trades as a DataFrame
         return pd.DataFrame(self.trades)
 
+def save_trades_to_csv(trades_df, file_name):
+    # Ensure the output directory exists
+    output_dir = "backtest"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save the trades DataFrame to the specified file
+    output_file = os.path.join(output_dir, f"{file_name.split('.')[0]}-tradelog.csv")
+    trades_df.to_csv(output_file, index=False)
+
 def process_single_file(file_path, verbose):
     backtester = TradingBacktester(verbose=verbose)
     backtester.load_data(file_path)
@@ -188,6 +197,10 @@ def process_single_file(file_path, verbose):
     trades_df = backtester.get_results()
 
     print(f"Total Profit/Loss for {os.path.basename(file_path)}: {backtester.daily_profit_loss}")
+
+    # Save trades to a CSV file
+    save_trades_to_csv(trades_df, os.path.basename(file_path))
+
     return backtester.daily_profit_loss, trades_df
 
 def process_folder(folder_path, verbose):
