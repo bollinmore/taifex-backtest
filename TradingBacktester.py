@@ -31,6 +31,7 @@ class TradingBacktester:
         
         # Rename columns for consistency with the code
         column_mapping = {
+            '成交價格': 'Price',
             '收盤價': 'Close',
             '最低價': 'Low',
             '成交時間': 'Time',
@@ -55,7 +56,7 @@ class TradingBacktester:
         # Perform the backtesting loop
         for i in range(len(self.filtered_data)):
             current_time = self.filtered_data.loc[i, 'Time']
-            current_price = self.filtered_data.loc[i, 'Close']
+            current_price = self.filtered_data.loc[i, 'Price']
 
             # Close all positions if past the cutoff time
             if current_time >= '13:40:00' and self.position_count > 0:
@@ -74,7 +75,7 @@ class TradingBacktester:
 
     def execute_trade(self, index, trade_type, entry_price):
         # Execute a trade if conditions are met
-        actual_entry_price = self.filtered_data.loc[index, 'Close']
+        actual_entry_price = self.filtered_data.loc[index, 'Price']
         take_profit = actual_entry_price + self.stop_loss if trade_type == 'Buy' else actual_entry_price - self.stop_loss
         stop_loss_price = actual_entry_price - self.stop_loss if trade_type == 'Buy' else actual_entry_price + self.stop_loss
 
@@ -116,7 +117,7 @@ class TradingBacktester:
 
     def check_stop_loss(self, index):
         # Check if the stop-loss conditions are met for any open trades
-        current_price = self.filtered_data.loc[index, 'Close']
+        current_price = self.filtered_data.loc[index, 'Price']
         for trade in self.trades:
             if trade['Close Time'] is None:  # Only check open trades
                 trade_type = trade['Type']
@@ -137,7 +138,7 @@ class TradingBacktester:
     def close_all_positions(self, index):
         # Close all open positions and calculate profit/loss
         close_time = self.filtered_data.loc[index, 'Time']
-        close_price = self.filtered_data.loc[index, 'Close']
+        close_price = self.filtered_data.loc[index, 'Price']
         total_profit_loss = 0
         for trade in self.trades:
             if trade['Close Time'] is None:  # Process only open trades
@@ -197,7 +198,7 @@ def process_single_file(file_path, verbose):
     trades_df = backtester.get_results()
 
     if verbose:
-        print(trades_df)
+      print(trades_df)
 
     print(f"Total Profit/Loss for {os.path.basename(file_path)}: {backtester.daily_profit_loss}")
 
