@@ -57,7 +57,8 @@ class TradingBacktester:
 
     def backtest(self):
         # Perform the backtesting loop
-        for i in range(len(self.filtered_data)):
+        start_index = self.filtered_data[self.filtered_data['Time'] >= '09:05:00'].index[0]
+        for i in range(start_index, len(self.filtered_data)):
             current_time = self.filtered_data.loc[i, 'Time']
             current_price = self.filtered_data.loc[i, 'Price']
 
