@@ -46,7 +46,7 @@ class DataFilter:
         else:
             raise ValueError("Error: Data not loaded. Please load data first.")
 
-    def aggregate_data(self):
+    def add_price_columns(self):
         if self.filtered_data is not None and not self.filtered_data.empty:
             grouped = self.filtered_data.groupby(["成交日期", "成交時間"]).agg(
                 開盤價=("成交價格", "first"),
@@ -54,11 +54,12 @@ class DataFilter:
                 最高價=("成交價格", "max"),
                 最低價=("成交價格", "min")
             ).reset_index()
-            self.filtered_data = self.filtered_data.merge(grouped, on=["成交日期", "成交時間"])
-            self.filtered_data = self.filtered_data.drop_duplicates(subset=["成交日期", "成交時間"], keep="last")
-            print("Data aggregated and merged with computed columns.")
+
+            # Merge without dropping duplicates
+            self.filtered_data = self.filtered_data.merge(grouped, on=["成交日期", "成交時間"], how="left")
+            print("Price columns added without merging duplicate records.")
         else:
-            raise ValueError("Error: No filtered data available to aggregate.")
+            raise ValueError("Error: No filtered data available to process.")
 
     def save_filtered_data(self, output_path="filtered_data.csv", encoding='big5'):
         if self.filtered_data is not None and not self.filtered_data.empty:
@@ -94,7 +95,7 @@ def main(args=None):
     data_filter.load_data()
     data_filter.preprocess_data()
     data_filter.filter_data(args.product_code, args.expiry_month, args.start_date, args.start_time)
-    data_filter.aggregate_data()
+    data_filter.add_price_columns()
     data_filter.save_filtered_data(args.output_path)
 
 
