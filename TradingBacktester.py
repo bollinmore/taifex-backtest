@@ -14,6 +14,9 @@ class TradingBacktester:
         self.position_count = 0  # Current number of open positions
         self.max_positions = 4  # Maximum allowable positions
         self.parent_lot_size = 2  # Initial number of lots for parent trades
+        self.loss_count = 0  # Counter for the number of stop-loss hits
+        self.daily_loss_limit = 180  # Daily loss limit in points
+        self.cumulative_loss = 0  # Cumulative loss for the day
         self.last_entry_price = None  # Price of the last executed trade
         self.daily_profit_loss = 0  # Total profit/loss for the day
         self.parent_trade_id = None  # ID of the parent trade
@@ -58,6 +61,12 @@ class TradingBacktester:
             current_time = self.filtered_data.loc[i, 'Time']
             current_price = self.filtered_data.loc[i, 'Price']
 
+            # Stop trading if cumulative loss exceeds or equals daily limit
+            if self.cumulative_loss >= self.daily_loss_limit:
+                if self.verbose:
+                    print(f"Daily loss limit reached. Cumulative loss: {self.cumulative_loss}")
+                break
+
             # Close all positions if past the cutoff time
             if current_time >= '13:40:00' and self.position_count > 0:
                 self.close_all_positions(i)
@@ -91,14 +100,17 @@ class TradingBacktester:
             elif trade_type == 'Sell' and (self.last_entry_price - actual_entry_price) <= self.safety_distance:
                 return
 
+        # Determine lot size based on loss count
+        is_parent = self.parent_trade_id is None  # Determine if this is a parent trade
+        lot_size = 1 if self.loss_count >= 2 else self.parent_lot_size if is_parent else 1
+
         # Execute the trade if the price satisfies the entry condition
         if (trade_type == 'Buy' and actual_entry_price >= entry_price) or (trade_type == 'Sell' and actual_entry_price <= entry_price):
             self.trade_id_counter += 1
-            is_parent = self.parent_trade_id is None  # Determine if this is a parent trade
             if is_parent:
                 self.parent_trade_id = self.trade_id_counter
 
-            self.position_count += self.parent_lot_size if is_parent else 1
+            self.position_count += lot_size
             self.last_entry_price = actual_entry_price
 
             # Record the trade details
@@ -112,7 +124,8 @@ class TradingBacktester:
                 'Close Price': None,
                 'Profit/Loss': None,
                 'Take Profit': take_profit,
-                'Stop Loss': stop_loss_price
+                'Stop Loss': stop_loss_price,
+                'Lot Size': lot_size
             })
 
     def check_stop_loss(self, index):
@@ -142,14 +155,19 @@ class TradingBacktester:
         total_profit_loss = 0
         for trade in self.trades:
             if trade['Close Time'] is None:  # Process only open trades
-                profit_loss = (close_price - trade['Entry Price']) * (1 if trade['Type'] == 'Buy' else -1)
+                profit_loss = (close_price - trade['Entry Price']) * (1 if trade['Type'] == 'Buy' else -1) * trade['Lot Size']
                 total_profit_loss += profit_loss
                 trade['Close Time'] = close_time
                 trade['Close Price'] = close_price
                 trade['Profit/Loss'] = profit_loss
 
-        # Update daily profit/loss and reset position tracking variables
+        # Update daily profit/loss and cumulative loss
         self.daily_profit_loss += total_profit_loss
+        self.cumulative_loss += max(0, -total_profit_loss)  # Only add losses to cumulative loss
+
+        if total_profit_loss < 0:
+            self.loss_count += 1
+
         self.trades.append({
             'Trade ID': None,
             'Parent Trade ID': None,
@@ -160,7 +178,8 @@ class TradingBacktester:
             'Close Price': close_price,
             'Profit/Loss': total_profit_loss,
             'Take Profit': None,
-            'Stop Loss': None
+            'Stop Loss': None,
+            'Lot Size': None
         })
         self.position_count = 0
         self.parent_close_time = close_time
@@ -197,10 +216,12 @@ def process_single_file(file_path, verbose):
     backtester.backtest()
     trades_df = backtester.get_results()
 
-    if verbose:
-      print(trades_df)
-
     print(f"Total Profit/Loss for {os.path.basename(file_path)}: {backtester.daily_profit_loss}")
+
+    # Print detailed trade information if verbose is enabled
+    if verbose:
+        print("Trade Details:")
+        print(trades_df)
 
     # Save trades to a CSV file
     save_trades_to_csv(trades_df, os.path.basename(file_path))
