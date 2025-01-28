@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 class TradingBacktester:
-    def __init__(self, file_path=None, verbose=False):
+    def __init__(self, file_path=None, verbose=False, update_reference=False):
         self.file_path = file_path  # Path to the input data file
         self.filtered_data = None  # DataFrame to store loaded data
         self.trades = []  # List to store executed trades
@@ -24,6 +24,7 @@ class TradingBacktester:
         self.trade_id_counter = 0  # Counter for unique trade IDs
         self.safety_distance = 30  # Minimum distance before moving stop-loss
         self.verbose = verbose  # Control whether to print detailed output
+        self.update_reference = update_reference  # Control whether to update reference points every minute
 
     def load_data(self, file_path):
         # Load data from the file, handle different encodings if necessary
@@ -61,6 +62,10 @@ class TradingBacktester:
         for i in range(start_index, len(self.filtered_data)):
             current_time = self.filtered_data.loc[i, 'Time']
             current_price = self.filtered_data.loc[i, 'Price']
+
+            # Update reference points every minute if enabled
+            if self.update_reference and i > 0 and current_time[:5] != self.filtered_data.loc[i - 1, 'Time'][:5]:
+                self.update_reference_points(i)
 
             # Stop trading if cumulative loss exceeds or equals daily limit
             if self.cumulative_loss >= self.daily_loss_limit:
